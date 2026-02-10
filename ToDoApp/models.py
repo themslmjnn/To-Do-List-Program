@@ -14,3 +14,16 @@ class Todos(Base):
     __table_args__ = (
         UniqueConstraint('title', 'deadline', name="uix_title_deadline"),
     )
+
+class Users(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True)
+    first_name = Column(String)
+    last_name = Column(String)
+    date_of_birth = Column(Date)
+    email_address = Column(String, unique=True)
+    hash_password = Column(String)
+    role = Column(String)
+    is_active = Column(Boolean, default=False)
