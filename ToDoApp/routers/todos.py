@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from datetime import date
 from sqlalchemy import func
+from .auth import get_current_user
 
 import models
 
@@ -14,6 +15,8 @@ import models
 router = APIRouter()
 
 db_dependency = Annotated[Session, Depends(get_db)]
+
+user_dependency = Annotated[dict, Depends(get_current_user)]
 
 
 @router.get("/todos", response_model=list[TodoResponse], status_code=status.HTTP_200_OK, tags=["Get Methods"])
@@ -66,7 +69,9 @@ async def get_books_by_id(db: db_dependency, todo_id: int = Path(ge=1)):
 
 
 @router.post("/todos", response_model=TodoResponse, status_code=status.HTTP_201_CREATED, tags=["Add Methods"])
-async def add_todos(db: db_dependency, todo_request: TodoCreate):
+async def add_todos(user: user_dependency, db: db_dependency, todo_request: TodoCreate):
+    if user is None:
+        raise HTTPException(status_code=401, detail="Failed Authentication")
     todo_model = models.Todos(**todo_request.model_dump())
 
     try:
