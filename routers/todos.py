@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
-from database import get_db
-from pydantic_schemas import TodoCreate, TodoResponse
+from db.database import get_db
+from schemas.pydantic_schemas import TodoCreate, TodoResponse
 from typing import Annotated, Optional
 from starlette import status
 from sqlalchemy.orm import Session
@@ -8,8 +8,9 @@ from sqlalchemy.exc import IntegrityError
 from datetime import date
 from sqlalchemy import func
 from .auth import get_current_user
+from repositories import todos_repository
 
-import models
+import models.models as models
 
 
 router = APIRouter()
@@ -18,10 +19,12 @@ db_dependency = Annotated[Session, Depends(get_db)]
 
 user_dependency = Annotated[dict, Depends(get_current_user)]
 
+MESSAGE_404 = "Todo(s) not found"
+MESSAGE_409 = "Duplicate values are not accepted"
 
 @router.get("/todos", response_model=list[TodoResponse], status_code=status.HTTP_200_OK, tags=["Get Methods"])
-async def get_all_todos(db: db_dependency):
-    return db.query(models.Todos).all()
+def get_all_todos(db: db_dependency):
+    return todos_repository.SyncORM.get_all_todos(db)
 
 
 @router.get("/todos/search", response_model=list[TodoResponse], status_code=status.HTTP_200_OK, tags=["Search Methods"])
@@ -53,17 +56,17 @@ async def search_books(db: db_dependency,
     todo_model = query.all()
 
     if not todo_model:
-        raise HTTPException(status_code=404, detail="Todo not found")
+        raise HTTPException(status_code=404, detail=MESSAGE_404)
     
     return todo_model
     
 
 @router.get("/todos/{todo_id}", response_model=TodoResponse, status_code=status.HTTP_200_OK, tags=["Search Methods"])
-async def get_books_by_id(db: db_dependency, todo_id: int = Path(ge=1)):
-    todo_model = db.query(models.Todos).filter(models.Todos.id == todo_id).first()
+async def get_todos_by_id(db: db_dependency, todo_id: int = Path(ge=1)):
+    todo_model = todos_repository.SyncORM.get_todo_by_id(db, todo_id)
 
     if todo_model is None:
-        raise HTTPException(status_code=404, detail="Todo not found")
+        raise HTTPException(status_code=404, detail=MESSAGE_404)
     
     return todo_model
 
@@ -72,36 +75,32 @@ async def get_books_by_id(db: db_dependency, todo_id: int = Path(ge=1)):
 async def add_todos(user: user_dependency, db: db_dependency, todo_request: TodoCreate):
     if user is None:
         raise HTTPException(status_code=401, detail="Failed Authentication")
+    
     todo_model = models.Todos(**todo_request.model_dump())
 
     try:
-        db.add(todo_model)
-        db.commit()
-        db.refresh(todo_model)
-
-        return todo_model
+        return todos_repository.SyncORM.add_todo(db, todo_model)
     except IntegrityError:
         db.rollback()
 
-        raise HTTPException(status_code=409, detail="Duplicate values are not accepted")
+        raise HTTPException(status_code=409, detail=MESSAGE_409)
     
 
 @router.delete("/todos/{todo_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Delete Methods"])
 async def delete_todo_by_id(db: db_dependency, todo_id: int = Path(ge=1)):
-    todo_model = db.query(models.Todos).filter(models.Todos.id == todo_id).first()
+    todo_model = todos_repository.SyncORM.get_todo_by_id(db, todo_id)
 
     if todo_model is None:
-        raise HTTPException(status_code=404, detail="Todo not found")
+        raise HTTPException(status_code=404, detail=MESSAGE_404)
     
-    db.delete(todo_model)
-    db.commit()
+    todos_repository.SyncORM.delete_todo(db, todo_model)
 
 @router.put("/todos/{todo_id}", response_model=TodoResponse, status_code=status.HTTP_200_OK, tags=["Update Methods"])
 async def update_todos_by_id(db: db_dependency, todo_request: TodoCreate, todo_id: int = Path(ge=1)):
-    todo_model = db.query(models.Todos).filter(models.Todos.id == todo_id).first()
+    todo_model = todos_repository.SyncORM.get_todo_by_id(db, todo_id)
 
     if todo_model is None:
-        raise HTTPException(status_code=404, detail="Todo not found")
+        raise HTTPException(status_code=404, detail=MESSAGE_404)
     
     try:
         for field, value in todo_request.model_dump().items():
@@ -111,6 +110,6 @@ async def update_todos_by_id(db: db_dependency, todo_request: TodoCreate, todo_i
     except IntegrityError:
         db.rollback()
 
-        raise HTTPException(status_code=409, detail="Duplicate values are not accepted")
+        raise HTTPException(status_code=409, detail=MESSAGE_409)
     
     return todo_model

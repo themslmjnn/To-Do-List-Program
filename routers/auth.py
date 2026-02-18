@@ -1,16 +1,18 @@
 from fastapi import APIRouter, Depends, Path, HTTPException
-from pydantic_schemas import UserCreate, UserResponse, Token
+from schemas.pydantic_schemas import UserCreate, UserResponse, Token
 from starlette import status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import Annotated
-from database import get_db
+from db.database import get_db
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import jwt, JWTError
 from datetime import datetime, timezone, timedelta
 
-import models
+import models.models as models
+from repositories import auth_repository
+from services import auth_services
 
 
 router = APIRouter()
@@ -24,34 +26,37 @@ oauth2_bearer = OAuth2PasswordBearer(tokenUrl='token')
 db_dependency = Annotated[Session, Depends(get_db)]
 
 
+MESSAGE_404 = "User(s) not found"
+MESSAGE_409 = "Duplicate values are not accepted"
+MESSAGE_401 = "Could not validate user"
+
 @router.get("/auth", response_model=list[UserResponse], status_code=status.HTTP_200_OK, tags=["Get Methods"])
-async def get_all_users(db: db_dependency):
-    return db.query(models.Users).all()
+def get_all_users(db: db_dependency):
+    return auth_repository.AuthRepo.get_all_users(db)
 
 
 @router.get("/auth/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK, tags=["Search Methods"])
-async def get_users_by_id(db: db_dependency, user_id: int = Path(ge=1)):
-    user_model = db.query(models.Users).filter(models.Users.id == user_id).first()
+def get_users_by_id(db: db_dependency, user_id: int = Path(ge=1)):
+    user_model = auth_repository.AuthRepo.get_user_by_id(db, user_id)
 
     if user_model is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=MESSAGE_404)
     
     return user_model
 
 
 @router.delete("/auth/{user_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Delete Methods"])
-async def delete_users_by_id(db: db_dependency, user_id: int = Path(ge=1)):
-    user_model = db.query(models.Users).filter(models.Users.id == user_id).first()
+def delete_users_by_id(db: db_dependency, user_id: int = Path(ge=1)):
+    user_model = auth_repository.AuthRepo.get_user_by_id(db, user_id)
 
     if user_model is None:
         raise HTTPException(status_code=404, detail="User not found")
     
-    db.delete(user_model)
-    db.commit()
+    auth_repository.AuthRepo.delete_user_by_id(db, user_model)
 
 
 @router.post("/auth", response_model=UserResponse, status_code=status.HTTP_201_CREATED, tags=["Add Methods"])
-async def add_users(db: db_dependency, user_request: UserCreate):
+def add_users(db: db_dependency, user_request: UserCreate):
     new_user = models.Users(\
         username=user_request.username,
         first_name=user_request.first_name,
@@ -64,23 +69,19 @@ async def add_users(db: db_dependency, user_request: UserCreate):
     )
 
     try:
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
-        print(new_user.hash_password)
-        return new_user
+        return auth_repository.AuthRepo.add_user(db, new_user)
     except IntegrityError:
         db.rollback()
 
-        raise HTTPException(status_code=409, detail="Duplicate values are not accepted")
+        raise HTTPException(status_code=409, detail=MESSAGE_409)
     
 
 @router.put("/auth/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK, tags=["Update Methods"])
-async def update_users_by_id(db: db_dependency, user_request: UserCreate, user_id: int = Path(ge=1)):
-    user_model = db.query(models.Users).filter(models.Users.id == user_id).first()
+def update_users_by_id(db: db_dependency, user_request: UserCreate, user_id: int = Path(ge=1)):
+    user_model = auth_repository.AuthRepo.get_user_by_id(db, user_id)
 
     if user_model is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=MESSAGE_404)
     
     try:
         for field, value in user_request.model_dump().items():
@@ -90,19 +91,9 @@ async def update_users_by_id(db: db_dependency, user_request: UserCreate, user_i
     except IntegrityError:
         db.rollback()
         
-        raise HTTPException(status_code=409, detail="Duplicate values are not accepted")
+        raise HTTPException(status_code=409, detail=MESSAGE_409)
     
     return user_model
-
-def authenticate_user(username: str, password: str, db):
-    user = db.query(models.Users).filter(models.Users.username == username).first()
-
-    if not user:
-        return False
-    if not bcrypt_context.verify(password, user.hash_password):
-        return False
-    
-    return user
 
 
 def create_access_token(username: str, user_id: int, expires_delta: timedelta):
@@ -111,7 +102,7 @@ def create_access_token(username: str, user_id: int, expires_delta: timedelta):
     encode.update({'exp': expires})
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
+def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get('sub')
@@ -119,20 +110,23 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
         user_role: str = payload.get('role')
         if username is None or user_id is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                                detail='Could not validate user.')
+                                detail=MESSAGE_401401)
         return {'username': username, 'id': user_id, 'user_role': user_role}
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail='Could not validate user.')
+                            detail=MESSAGE_401)
 
 
 @router.post("/token", response_model=Token)
-async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
                                  db: db_dependency):
-    user = authenticate_user(form_data.username, form_data.password, db)
+    user = auth_services.authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail='Could not validate user.')
+                            detail=MESSAGE_401)
     token = create_access_token(user.username, user.id, timedelta(minutes=20))
 
     return {'access_token': token, 'token_type': 'bearer'}
+
+
+
