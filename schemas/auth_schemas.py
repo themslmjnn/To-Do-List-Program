@@ -2,22 +2,6 @@ from pydantic import BaseModel, Field, EmailStr
 from typing import Optional
 from datetime import date
 
-class TodoBase(BaseModel):
-    title: str = Field(min_length=5, max_length=30)
-    deadline: date
-    description: Optional[str] = Field(max_length=50, default=None)
-    priority: str = Field(min_length=3, max_length=10)
-    is_completed: bool = Field(default=False)
-
-class TodoCreate(TodoBase):
-    pass
-
-class TodoResponse(TodoBase):
-    id: int
-
-    class Config:
-        from_attributes = True
-
 class UserBase(BaseModel):
     username: str = Field(min_length=6, max_length=20)
     first_name: str = Field(min_length=2, max_length=20)
@@ -35,6 +19,17 @@ class UserResponse(UserBase):
 
     class Config:
         from_attributes = True
+
+class UserUpdate(BaseModel):
+    username: Optional[str] = Field(None, min_length=6, max_length=20)
+    first_name: Optional[str] = Field(None, min_length=2, max_length=20)
+    last_name: Optional[str] = Field(None, min_length=2, max_length=20)
+    date_of_birth: Optional[date] = Field(None)
+    email_address: Optional[EmailStr] = Field(None)
+
+class UserUpdatePassword(BaseModel):
+    old_password: str = Field(min_length=6)
+    new_password: str = Field(min_length=6)
 
 class Token(BaseModel):
     access_token: str

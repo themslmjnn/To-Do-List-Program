@@ -1,14 +1,26 @@
-from models import models
+from models.user_model import Users
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
-class AuthRepo:
+class UserRepository:
     @staticmethod
     def get_all_users(db: Session):
-        return db.query(models.Users).all()
+        query = select(Users)
+
+        result = db.execute(query)
+
+        return result.scalars().all()
     
     @staticmethod
     def get_user_by_id(db: Session, user_id: int):
-        return db.query(models.Users).filter(models.Users.id == user_id).first()
+        query = (
+            select(Users)
+            .filter(Users.id == user_id)
+        )
+
+        result = db.execute(query)
+
+        return result.scalars().first()
     
     @staticmethod
     def delete_user_by_id(db: Session, user_model):
@@ -25,4 +37,11 @@ class AuthRepo:
     
     @staticmethod
     def get_user_by_username(db: Session, username: str):
-        return db.query(models.Users).filter(models.Users.username == username).first()
+        query = (
+            select(Users)
+            .filter(Users.username == username)
+        )
+
+        result = db.execute(query)
+
+        return result.scalars().first()

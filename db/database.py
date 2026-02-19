@@ -3,10 +3,7 @@ from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 from db.config import settings
 
-sync_engine = create_engine(
-    url=settings.DATABASE_URL_psycopg,
-    echo=False
-    )
+sync_engine = create_engine(url=settings.DATABASE_URL_psycopg)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_engine)
 
@@ -14,9 +11,5 @@ class Base(DeclarativeBase):
     pass
 
 def get_db():
-    db = SessionLocal()
-
-    try:
+    with SessionLocal() as db:
         yield db
-    finally:
-        db.close()

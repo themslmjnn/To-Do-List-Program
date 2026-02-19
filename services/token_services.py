@@ -1,0 +1,10 @@
+from jose import jwt
+from db.config import settings
+from datetime import datetime, timezone, timedelta
+
+def create_access_token(username: str, user_id: int, role: str, expires_delta: timedelta):
+    encode = {'sub': username, 'id': user_id, 'role': role}
+    expires = datetime.now(timezone.utc) + expires_delta
+    encode.update({'exp': expires})
+
+    return jwt.encode(encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

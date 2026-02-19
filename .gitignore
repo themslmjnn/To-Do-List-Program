@@ -1,1 +1,4 @@
 .env
+routers/test.py
+*.pyc
+__pycache__/
