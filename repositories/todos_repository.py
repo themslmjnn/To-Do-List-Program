@@ -1,6 +1,8 @@
-from models.todo_model import Todos
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, and_
+
+from models.todo_model import Todos
+
 
 class TodoRepository:
     @staticmethod
@@ -11,6 +13,19 @@ class TodoRepository:
 
         return result.scalars().all()
     
+
+    @staticmethod
+    def get_todo_by_user_id(db: Session, user_id: int):
+        query = (
+            select(Todos)
+            .filter(Todos.user_id == user_id)
+        )
+
+        result = db.execute(query)
+
+        return result.scalars().all()
+    
+
     @staticmethod
     def get_todo_by_id(db: Session, todo_id: int):
         query = (
@@ -22,18 +37,18 @@ class TodoRepository:
 
         return result.scalars().first()
     
+
     @staticmethod
     def add_todo(db: Session, new_todo):
         db.add(new_todo)
-        db.commit()
-        db.refresh(new_todo)
 
         return new_todo
+    
     
     @staticmethod
     def delete_todo(db: Session, todo_model):
         db.delete(todo_model)
-        db.commit()
+
 
     @staticmethod
     def search_todo(db: Session, todo):
@@ -49,7 +64,7 @@ class TodoRepository:
             query = query.filter(func.lower(Todos.description).contains(todo.description.lower()))
 
         if todo.priority:
-            query = query.filter(func.lower(Todos.priority).contains(todo.priority.lower()))
+            query = query.filter(Todos.priority == todo.priority)
 
         if todo.is_completed is not None:
             query = query.filter(Todos.is_completed == todo.is_completed)
@@ -57,3 +72,15 @@ class TodoRepository:
         result = db.execute(query)
 
         return result.scalars().all()
+    
+
+    @staticmethod
+    def get_user_id_by_todo_id(db: Session, todo_id):
+        query = (
+            select(Todos.user_id)
+            .filter(Todos.id == todo_id)
+        )
+
+        result = db.execute(query)
+
+        return result.scalars().first()

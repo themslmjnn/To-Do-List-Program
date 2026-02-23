@@ -9,10 +9,13 @@ class UserBase(BaseModel):
     date_of_birth: date
     email_address: EmailStr
 
-class UserCreate(UserBase):
+class UserCreatePublic(UserBase):
     password: str = Field(min_length=6)
-    role: Optional[str] = Field(default=None)
-    is_active: Optional[bool] = Field(default=False)
+
+class UserCreateAdmin(UserBase):
+    password: str = Field(min_length=6)
+    role: str = Field(default="user")
+    is_active: bool = Field(default=True)
 
 class UserResponse(UserBase):
     id: int

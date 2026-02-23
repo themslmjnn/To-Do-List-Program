@@ -9,11 +9,15 @@ class TodoBase(BaseModel):
     priority: str = Field(min_length=3, max_length=10)
     is_completed: bool = Field(default=False)
 
-class TodoCreate(TodoBase):
+class TodoCreatePublic(TodoBase):
     pass
+
+class TodoCreateAdmin(TodoBase):
+    user_id: int
 
 class TodoResponse(TodoBase):
     id: int
+    user_id: int
 
     class Config:
         from_attributes = True

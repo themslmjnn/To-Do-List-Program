@@ -3,6 +3,8 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 
 from repositories.auth_repository import UserRepository
+from repositories.todos_repository import TodoRepository
+from models.todo_model import Todos
 from models.user_model import Users
 
 
@@ -11,10 +13,10 @@ MESSAGE_403 = "Accessing denied"
 MESSAGE_404 = "User(s) not found"
 
 
-class AuthService:
+class AdminService:
     @staticmethod
     def get_user_by_id(db, user, user_id):
-        if user["id"] != user_id and  user["user_role"] != "admin":
+        if user["user_role"] != "admin":
             raise HTTPException(status_code=403, detail=MESSAGE_403)
 
         user_model = UserRepository.get_user_by_id(db, user_id)
@@ -23,10 +25,21 @@ class AuthService:
             raise HTTPException(status_code=404, detail=MESSAGE_404)
 
         return user_model
+    
+
+    @staticmethod
+    def get_all_users(db, user):
+        if user["user_role"] != "admin":
+            raise HTTPException(status_code=403, detail=MESSAGE_403)
+        
+        return UserRepository.get_all_users(db)
 
 
     @staticmethod
-    def register_user(db, user_request, bcrypt_context):
+    def register_user(db, user, user_request, bcrypt_context):
+        if user["user_role"] != "admin":
+            raise HTTPException(status_code=403, detail=MESSAGE_403)
+    
         new_user = Users(\
             username=user_request.username,
             first_name=user_request.first_name.title(),
@@ -34,8 +47,8 @@ class AuthService:
             date_of_birth=user_request.date_of_birth,
             email_address=user_request.email_address,
             hash_password=bcrypt_context.hash(user_request.password),
-            role="user",
-            is_active=True
+            role=user_request.role,
+            is_active=user_request.is_active
         )
 
         try:
@@ -50,11 +63,11 @@ class AuthService:
             db.rollback()
 
             raise HTTPException(status_code=409, detail=MESSAGE_409)
-        
+
 
     @staticmethod
-    def update_user_password(db, user, user_request, user_id, bcrypt_context):
-        if user["id"] != user_id and user["user_role"] != "admin":
+    def delete_user_by_id(db, user, user_id):
+        if user["user_role"] != "admin":
             raise HTTPException(status_code=403, detail=MESSAGE_403)
 
         user_model = UserRepository.get_user_by_id(db, user_id)
@@ -62,45 +75,48 @@ class AuthService:
         if user_model is None:
             raise HTTPException(status_code=404, detail=MESSAGE_404)
         
-        if not bcrypt_context.verify(user_request.old_password, user_model.hash_password):
-            raise HTTPException(status_code=401, detail="Invalid old password")
-        
-        user_model.hash_password = bcrypt_context.hash(user_request.new_password)
+        UserRepository.delete_user_by_id(db, user_model)
 
         db.commit()
 
 
     @staticmethod
-    def update_user_by_id(db, user, user_request, user_id):
-        if user["id"] != user_id and user["user_role"] != "admin":
+    def get_all_todos(db, user):
+        if user["user_role"] != "admin":
             raise HTTPException(status_code=403, detail=MESSAGE_403)
-
-        user_model = UserRepository.get_user_by_id(db, user_id)
-
-        if user_model is None:
-            raise HTTPException(status_code=404, detail=MESSAGE_404)
-        
-        try:
-            for field, value in user_request.model_dump(exclude_unset=True).items():
-                setattr(user_model, field, value)
-
-            db.commit()
-
-        except IntegrityError:
-            db.rollback()
-            
-            raise HTTPException(status_code=409, detail=MESSAGE_409)
-        
-        return user_model
-
+    
+        return TodoRepository.get_all_todos(db)
+    
 
     @staticmethod
-    def authenticate_user(username: str, password: str, db, bcrypt_context):
-        user = UserRepository.get_user_by_username(db, username)
-
-        if not user:
-            return False
-        if not bcrypt_context.verify(password, user.hash_password):
-            return False
+    def search_todos(db, user, search_request):
+        if user["user_role"] != "admin":
+            raise HTTPException(status_code=403, detail=MESSAGE_403)
         
-        return user
+        todo_model = TodoRepository.search_todo(db, search_request)
+
+        if not todo_model:
+            raise HTTPException(status_code=404, detail=MESSAGE_404)
+        
+        return todo_model
+    
+    
+    @staticmethod
+    def add_todo_admin(db, user, todo_request):
+        if user["user_role"] != "admin":
+            raise HTTPException(status_code=403, detail=MESSAGE_403)
+        
+        todo_model = Todos(**todo_request.model_dump())
+
+        try:
+            TodoRepository.add_todo(db, todo_model)
+            
+            db.commit()
+            db.refresh(todo_model)
+
+            return todo_model
+        
+        except IntegrityError:
+            db.rollback()
+
+            raise HTTPException(status_code=409, detail=MESSAGE_409)

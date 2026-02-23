@@ -1,6 +1,8 @@
-from models.user_model import Users
 from sqlalchemy.orm import Session
 from sqlalchemy import select
+
+from models.user_model import Users
+
 
 class UserRepository:
     @staticmethod
@@ -11,6 +13,7 @@ class UserRepository:
 
         return result.scalars().all()
     
+
     @staticmethod
     def get_user_by_id(db: Session, user_id: int):
         query = (
@@ -22,18 +25,18 @@ class UserRepository:
 
         return result.scalars().first()
     
+
     @staticmethod
     def delete_user_by_id(db: Session, user_model):
         db.delete(user_model)
-        db.commit()
+
 
     @staticmethod
     def add_user(db: Session, new_user):
         db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
 
         return new_user
+    
     
     @staticmethod
     def get_user_by_username(db: Session, username: str):
