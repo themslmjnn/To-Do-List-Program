@@ -22,7 +22,7 @@ db_dependency = Annotated[Session, Depends(get_db)]
 user_dependency = Annotated[dict, Depends(get_current_user)]
     
 
-@router.get("/users/{user_id}/todos", response_model=TodoResponse, status_code=status.HTTP_200_OK)
+@router.get("/users/{user_id}/todos", response_model=list[TodoResponse], status_code=status.HTTP_200_OK)
 def get_todos_by_user_id(
         db: db_dependency,
         user: user_dependency, 

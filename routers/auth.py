@@ -11,7 +11,7 @@ from datetime import timedelta
 
 from db.database import get_db
 from core.security import get_current_user
-from services import auth_services
+from services.auth_services import AuthService
 from services.token_services import create_access_token
 from schemas.auth_schemas import UserResponse, UserUpdate, UserUpdatePassword, Token, UserCreatePublic
 
@@ -67,7 +67,7 @@ def update_user_password(
         user_request: UserUpdatePassword, 
         user_id: Annotated[int, Path(ge=1)]):
 
-    AuthService.update_user_password(db, user, user_request, user_id)
+    AuthService.update_user_password(db, user, user_request, user_id, bcrypt_context)
 
 
 @router.post("/token", response_model=Token)
@@ -75,7 +75,7 @@ def login_for_access_token(
         form_data: Annotated[OAuth2PasswordRequestForm, Depends()], 
         db: db_dependency):
     
-    user = auth_services.authenticate_user(form_data.username, form_data.password, db)
+    user = AuthService.authenticate_user(form_data.username, form_data.password, db, bcrypt_context)
 
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=MESSAGE_401)

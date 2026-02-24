@@ -45,7 +45,7 @@ class TodoService:
 
     @staticmethod
     def delete_todo_by_id(db, user, todo_id):
-        if user["id"] != TodoRepository.get_user_id_by_todoid(db, todo_id) and user["user_role"] != "admin":
+        if user["id"] != TodoRepository.get_user_id_by_todo_id(db, todo_id) and user["user_role"] != "admin":
             raise HTTPException(status_code=403, detail=MESSAGE_403)
         
         todo_model = TodoRepository.get_todo_by_id(db, todo_id)
