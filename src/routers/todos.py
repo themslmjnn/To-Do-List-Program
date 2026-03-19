@@ -7,9 +7,9 @@ from typing import Annotated
 from starlette import status
 
 from db.database import get_db
-from core.security import get_current_user
-from schemas.todos_schemas import TodoCreatePublic, TodoResponse, TodoUpdate
-from services.todo_services import TodoService
+from src.core.security import get_current_user
+from src.schemas.todos_schemas import TodoCreatePublic, TodoResponse, TodoUpdate
+from src.services.todo_services import TodoService
 
 
 router = APIRouter(

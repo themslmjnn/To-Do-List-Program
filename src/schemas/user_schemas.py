@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, EmailStr
 from typing import Optional
 from datetime import date
 
+
 class UserBase(BaseModel):
     username: str = Field(min_length=6, max_length=20)
     first_name: str = Field(min_length=2, max_length=20)
@@ -33,7 +34,3 @@ class UserUpdate(BaseModel):
 class UserUpdatePassword(BaseModel):
     old_password: str = Field(min_length=6)
     new_password: str = Field(min_length=6)
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str

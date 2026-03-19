@@ -2,10 +2,10 @@ from fastapi import HTTPException
 
 from sqlalchemy.exc import IntegrityError
 
-from repositories.auth_repository import UserRepository
-from repositories.todos_repository import TodoRepository
-from models.todo_model import Todos
-from models.user_model import Users
+from src.repositories.auth_repository import UserRepository
+from src.repositories.todos_repository import TodoRepository
+from src.models.todo_model import Todos
+from src.models.user_model import Users
 
 
 MESSAGE_409 = "Duplicate values are not accepted"

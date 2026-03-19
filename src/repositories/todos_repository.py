@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, and_
 
-from models.todo_model import Todos
+from src.models.todo_model import Todos
 
 
 class TodoRepository:

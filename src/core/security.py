@@ -1,15 +1,20 @@
-from fastapi import Depends, HTTPException
-from typing import Annotated
-from db.config import settings
-from starlette import status
-
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
 from jose import jwt, JWTError
+from passlib.context import CryptContext
+
+from typing import Annotated
+
+from db.config import settings
+
 
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl='/auth/token')
 
+bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated="auto")
+
 MESSAGE_401 = "Could not validate user"
+
 
 def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
     try:
@@ -25,3 +30,5 @@ def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
     
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=MESSAGE_401)
+    
+user_dependency = Annotated[dict, Depends(get_current_user)]

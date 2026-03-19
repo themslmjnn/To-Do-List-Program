@@ -2,8 +2,8 @@ from fastapi import HTTPException
 
 from sqlalchemy.exc import IntegrityError
 
-from repositories.todos_repository import TodoRepository
-from models.todo_model import Todos
+from src.repositories.todos_repository import TodoRepository
+from src.models.todo_model import Todos
 
 
 MESSAGE_404 = "Todo(s) not found"

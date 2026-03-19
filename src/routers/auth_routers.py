@@ -1,35 +1,23 @@
 from fastapi import APIRouter, Depends, Path, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
-
-from sqlalchemy.orm import Session
-
-from passlib.context import CryptContext
+from fastapi.security import OAuth2PasswordRequestForm
 
 from starlette import status
 from typing import Annotated
 from datetime import timedelta
 
-from db.database import get_db
-from core.security import get_current_user
-from services.auth_services import AuthService
-from services.token_services import create_access_token
-from schemas.auth_schemas import UserResponse, UserUpdate, UserUpdatePassword, Token, UserCreatePublic
+from db.database import db_dependency
+from src.core.security import user_dependency, bcrypt_context
+from src.services.auth_services import AuthService
+from src.services.token_services import create_access_token
+from src.schemas.user_schemas import UserResponse, UserUpdate, UserUpdatePassword, Token, UserCreatePublic
 
-from services.auth_services import AuthService
+from src.services.auth_services import AuthService
 
 
 router = APIRouter(
     prefix="/auth",
     tags=["Auth"]
 )
-
-bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated="auto")
-
-oauth2_bearer = OAuth2PasswordBearer(tokenUrl='/auth/token')
-
-db_dependency = Annotated[Session, Depends(get_db)]
-
-user_dependency = Annotated[dict, Depends(get_current_user)]
 
 MESSAGE_401 = "Could not validate user"
 

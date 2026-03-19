@@ -1,36 +1,25 @@
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Depends, Path, status
 
-from sqlalchemy.orm import Session
-
-from passlib.context import CryptContext
-
-from starlette import status
 from typing import Annotated
 
-from db.database import get_db
-from core.security import get_current_user
-from schemas.todos_schemas import TodoResponse, TodoSearch, TodoCreateAdmin
-from schemas.auth_schemas import UserResponse, UserCreateAdmin
-from repositories.todos_repository import TodoRepository
-from services.admin_services import AdminService
+from db.database import db_dependency
+from src.core.security import user_dependency, bcrypt_context
+from src.schemas.todos_schemas import TodoResponse, TodoSearch, TodoCreateAdmin
+from src.schemas.user_schemas import UserResponse, UserCreateAdmin
+from src.services.user_services import AdminService
 
 
 router = APIRouter(
-    prefix="/admin",
-    tags=["Admin"]
+    prefix="/users",
+    tags=["Users"]
 )
-
-db_dependency = Annotated[Session, Depends(get_db)]
-
-user_dependency = Annotated[dict, Depends(get_current_user)]
-
-bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated="auto")
 
 
 @router.get("/users", response_model=list[UserResponse], status_code=status.HTTP_200_OK)
 def get_all_users(
         db: db_dependency, 
-        user: user_dependency):    
+        user: user_dependency):
+       
     return AdminService.get_all_users(db, user)
 
 
