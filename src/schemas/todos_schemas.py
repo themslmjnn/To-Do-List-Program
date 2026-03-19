@@ -2,25 +2,32 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date
 
+from src.models.todo_model import TodoPriority
+from src.schemas.base_schema import BaseSchema
+
+
 class TodoBase(BaseModel):
-    title: str = Field(min_length=5, max_length=30)
+    title: str = Field(min_length=5, max_length=50)
     deadline: date
-    description: Optional[str] = Field(max_length=50, default=None)
-    priority: str = Field(min_length=3, max_length=10)
-    is_completed: bool = Field(default=False)
+    description: Optional[str] = Field(max_length=100, default=None)
+
+    priority: TodoPriority
+    is_completed: bool
+
 
 class TodoCreatePublic(TodoBase):
     pass
 
+
 class TodoCreateAdmin(TodoBase):
-    user_id: int
+    owner_id: int
 
-class TodoResponse(TodoBase):
+
+class TodoResponse(TodoBase, BaseSchema):
     id: int
-    user_id: int
 
-    class Config:
-        from_attributes = True
+    owner_id: int
+
 
 class TodoSearch(BaseModel):
     title: Optional[str] = Field(None, max_length=30)
@@ -29,5 +36,10 @@ class TodoSearch(BaseModel):
     priority: Optional[str] = Field(None, max_length=10)
     is_completed: Optional[bool] = Field(None)
 
-class TodoUpdate(TodoSearch):
+
+class TodoUpdatePublic(TodoSearch):
+    pass
+
+
+class TodoUpdateAdmin(TodoSearch):
     pass

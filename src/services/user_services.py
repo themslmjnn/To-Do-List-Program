@@ -8,12 +8,7 @@ from src.models.todo_model import Todos
 from src.models.user_model import Users
 
 
-MESSAGE_409 = "Duplicate values are not accepted"
-MESSAGE_403 = "Accessing denied"
-MESSAGE_404 = "User(s) not found"
-
-
-class AdminService:
+class UserService:
     @staticmethod
     def get_user_by_id(db, user, user_id):
         if user["user_role"] != "admin":
